@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Pixelator</title>
+  <style>
+    * {
+        margin: 0;
+        padding: 0;
+    }
+    .imgbox {
+        display: grid;
+        height: 100%;
+    }
+    .center-fit {
+        max-width: 100%;
+        max-height: 100vh;
+        margin: auto;
+    }
+    
+    #controls-menu input {
+        display: block;
+    }
+    #toggle-menu {
+        width: 20px;
+    }
+    #top-bar {
+        width: 100%;
+    }
+    #progress-bar {
+        width: calc(100% - 30px);
+    }
+  </style>
+  <script>
+    pixelationLevel = null;
+    decreaseFactor = null;
+    timeInterval = null;
+    timer = null;
+    elapsedTime = null;
+    originalImage = null;
+    progressBar = null;
+    
+    window.addEventListener('load', function(event) {
+        progressBar = document.querySelector("#progress-bar")
+        document.querySelector("#toggle-menu").onclick = function (evt) {
+            var x = document.querySelector("#controls-menu");
+            if (x.style.display === "none") {
+              x.style.display = "block";
+            } else {
+              x.style.display = "none";
+            }
+        }
+        document.querySelector("#startBttn").onclick = function (evt) {
+            if (timer != null) {
+              console.log("Cancelling existing timer "+timer);
+              clearInterval(timer);
+              timer = null;
+            }
+
+            pixelationLevel = document.querySelector("#initPixLvl").value;
+            decreaseFactor = document.querySelector("#decreaseFactor").value;
+            timeInterval = document.querySelector("#timeInterval").value * 1000;
+            elapsedTime = 0;
+
+            progressBar.value = timeInterval;
+            progressBar.max = timeInterval;
+            
+            var tgt = document.querySelector("#fileInput");
+            var files = tgt.files;
+            // FileReader support
+            if (!FileReader) {
+                alert("Your browser does not support this application. Try using the latest version of Chrome or Firefox");
+                return;
+            }
+            if (files && files.length) {
+                var fr = new FileReader();
+                fr.onload = function () {
+                    originalImage = new Image();
+                    originalImage.onload = function() {
+                        updatePixelation();
+                        timer = setInterval(timerPopped, 50);
+                    }
+                    originalImage.src = fr.result;
+                }
+                fr.readAsDataURL(files[0]);
+            }
+            else {
+                alert("No image file selected!");
+                return;
+            }
+
+            // Hide the controls
+            document.querySelector("#controls-menu").style.display = "none";
+        }
+
+    }); 
+    
+    function pixelateImage(originalImage, pixelationFactor) {
+      const canvas = document.querySelector("#pixelatedImage")
+      const context = canvas.getContext("2d");
+      const originalWidth = originalImage.width;
+      const originalHeight = originalImage.height;
+      const canvasWidth = originalWidth;
+      const canvasHeight = originalHeight;
+      const scaledWidth = Math.floor(originalWidth / pixelationFactor);
+      const scaledHeight = Math.floor(originalHeight / pixelationFactor);
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      
+      // clear the canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw the minimized image
+      context.drawImage(originalImage, 0, 0, scaledWidth, scaledHeight);
+      
+      // turn off image aliasing
+      context.msImageSmoothingEnabled = false;
+      context.mozImageSmoothingEnabled = false;
+      context.webkitImageSmoothingEnabled = false;
+      context.imageSmoothingEnabled = false;
+
+      // enlarge the minimized image to full size    
+      context.drawImage(canvas, 0, 0, scaledWidth, scaledHeight, 0, 0, canvas.width, canvas.height);
+    }
+
+    function timerPopped() {
+        elapsedTime += 50;
+        timeSincePixelate = (elapsedTime % timeInterval)
+        progressBar.value = timeInterval - timeSincePixelate
+        if (timeSincePixelate == 0) {
+            updatePixelation();
+        }
+    }
+    
+    function updatePixelation() {
+        if (pixelationLevel == 1) {
+            clearInterval(timer);
+            console.log("Timer done.");
+        }
+        pixelateImage(originalImage,pixelationLevel);
+        pixelationLevel = Math.floor(pixelationLevel / decreaseFactor);
+    }
+  </script>
+</head>
+<body>
+  <div id="top-bar">
+      <button id="toggle-menu" >&vellip;</button>
+      <progress id="progress-bar" max="1" value="1"></progress>
+  </div>
+  <div id="controls-menu">
+    <input type="file" id="fileInput" />
+    <label for="initPixLvl">Initial Pixelation Level</input>
+    <input type="number" id="initPixLvl" value="100" />
+    <label for="decreaseFactor">Decrease factor</input>
+    <input type="number" id="decreaseFactor" value="2" />
+    <label for="timeInterval">Interval (secs)</input>
+    <input type="number" id="timeInterval" value="10" />
+    <input type="button" id="startBttn" value="Start" />
+  </div>
+  <canvas id="pixelatedImage" class="imgbox center-fit"></canvas>
+</body>
+</html>
+
